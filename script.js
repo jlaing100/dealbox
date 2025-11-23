@@ -15,6 +15,30 @@ class LenderMatchingApp {
             investmentExperience: 'Investment Experience'
         };
 
+        // Lender contact information mapping
+        this.LENDER_CONTACTS = {
+            'LoanStream Wholesale': {
+                website: 'https://loanstreamwholesale.com',
+                phone: '8007601833'
+            },
+            'Arc Home LLC': {
+                website: 'https://wholesale.archomellc.com',
+                phone: '8448513600'
+            },
+            'Angel Oak Mortgage Solutions (AOMS)': {
+                website: 'https://angeloakms.com',
+                phone: '8555394910'
+            },
+            'HomeXpress Mortgage': {
+                website: 'https://homexmortgage.com',
+                phone: '8555981430'
+            },
+            'SG Capital Partners (SGCP)': {
+                website: 'https://www.sgcp.com',
+                phone: '2033556100'
+            }
+        };
+
         this.init();
     }
     
@@ -927,6 +951,14 @@ Could you please provide ${missingFields.length === 1 ? 'that information' : 'th
             </div>
             ${contactButtonsHtml}
             <div class="card-actions">
+                ${this.LENDER_CONTACTS[lenderMatch.lenderName] ? `
+                <button class="card-cta" onclick="window.open('${this.LENDER_CONTACTS[lenderMatch.lenderName].website}', '_blank')">
+                    Visit Lender
+                </button>
+                <button class="card-cta" onclick="window.open('tel:${this.LENDER_CONTACTS[lenderMatch.lenderName].phone}', '_self')">
+                    Call Lender
+                </button>
+                ` : ''}
                 <button class="card-cta secondary" onclick="window.app.askAboutLender('${lenderMatch.lenderName}', '${lenderMatch.programName || lenderMatch.lenderName}')">
                     Ask About This Lender
                 </button>
