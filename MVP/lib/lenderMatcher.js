@@ -143,8 +143,11 @@ class LenderMatcher {
         confidence += 0.3;
         reason += `Credit score ${buyerProfile.creditScore} meets ${minCreditScore}. `;
       } else {
-        confidence += Math.max(0, 0.2 * (buyerProfile.creditScore / minCreditScore));
-        reason += `Credit score may need to be ${minCreditScore}+ for best pricing. `;
+        // Much stricter penalty for credit score below minimum
+        const shortfall = (minCreditScore - buyerProfile.creditScore) / minCreditScore;
+        confidence -= shortfall * 0.8; // Significant penalty
+        confidence = Math.max(0, confidence); // Don't go below 0
+        reason += `Credit score ${buyerProfile.creditScore} below minimum ${minCreditScore} requirement. `;
       }
     } else if (buyerProfile.creditScore && buyerProfile.creditScore >= 620) {
       confidence += 0.2;

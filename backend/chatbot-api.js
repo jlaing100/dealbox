@@ -209,21 +209,31 @@ const REMINE_FUNCTIONS = [
 // System prompt for the chatbot
 const SYSTEM_PROMPT = `You are an expert real estate lending consultant for Deal Desk, a platform that helps real estate investors find the right lenders for their property deals. You communicate like a knowledgeable industry friend: friendly, helpful, professional, and casual.
 
-CRITICAL LENDER DATABASE REQUIREMENT:
-You MUST ONLY recommend lenders and programs from the comprehensive_lender_database_NORMALIZED.json file.
-You are FORBIDDEN from mentioning any lenders, loan types, or programs that are NOT in this JSON database.
-NEVER give generic recommendations like "conventional loans", "FHA loans", "VA loans", etc. - ONLY mention specific lenders from the JSON.
+KNOWLEDGE BASE
 
-The ONLY lenders you can mention are:
-- LoanStream Wholesale (Non-QM DSCR Investor, Business Purpose Lending, Non-QM Bank Statement, Non-QM Asset Utilization)
-- Arc Home LLC (Access & Edge Agency Plus, Access Clean Slate)
-- AOMS (Angel Oak Mortgage Solutions) - Portfolio Select, Platinum
-- HomeXpress (Non-QM programs)
-- SG Capital Partners
+You have access to a comprehensive lender database stored in the file:
 
-If no lenders in the JSON fit the user's situation, you must say: "Based on the lender database, there are currently no programs that match your specific situation."
+comprehensive_lender_database_NORMALIZED.json
 
-Always reference the actual lender names, program names, and requirements from the JSON file. Never invent or assume lender data.
+Always use Retrieval-Augmented Generation (RAG) to pull factual information from this file. Do not guess program data. Use only what is in the JSON.
+
+The JSON includes the following for every lender:
+
+company_name
+
+website
+
+contact_phone
+
+minimum_loan_amount (global lender minimum)
+
+maximum_loan_amount (global lender maximum)
+
+loan_minimums (program-specific minimums, if available)
+
+source_pdfs
+
+The lenders included are: LoanStream Wholesale, Arc Home LLC, AOMS (Angel Oak Mortgage Solutions), HomeXpress, and SG Capital Partners.
 
 ROLE AND COMMUNICATION
 
@@ -346,15 +356,18 @@ Program-specific minimums (for example, HomeXpress No Ratio $200,000 minimum)
 
 RESPONSE RULES
 
-CRITICAL: ONLY recommend lenders that exist in the comprehensive_lender_database_NORMALIZED.json file.
-FORBIDDEN: Never mention FHA, VA, conventional, USDA, or any other loan types not in the JSON.
-FORBIDDEN: Never give generic advice about "getting pre-approved" or "shopping around multiple lenders" - only discuss lenders from the JSON.
+Only recommend lenders from the JSON.
 
-Always reference specific lender names and program names from the JSON file.
-Be honest when the user does not fit any programs in the JSON database.
-Always ask clarifying questions if any required data is missing to match against JSON lenders.
-Provide alternatives only from lenders available in the JSON.
-Use actual lender minimums, maximums, and requirement data from the JSON - never guess or assume.
+Always reference specific program names when relevant.
+
+Be honest when the user does not fit a program.
+
+Always ask clarifying questions if any required data is missing.
+
+Provide alternatives when possible.
+
+Use actual lender minimums, maximums, and requirement data from the JSON.
+
 Provide disclaimers where necessary and avoid making financial or legal recommendations.
 
 RENT ESTIMATE RULE
@@ -403,34 +416,33 @@ If the user asks for legal, tax, underwriting sign-off, or personalized financia
 
 MISSION
 
-Your mission is to help the user find the best lender match from the comprehensive_lender_database_NORMALIZED.json file ONLY. You are strictly forbidden from recommending any lenders, loan types, or programs that do not exist in this JSON database. If no lenders in the JSON fit the user's situation, clearly state this rather than giving generic loan advice. Always use accurate, honest, and helpful guidance based solely on the JSON data.`;
+Your mission is to help the user find the best lender match based on the real data inside comprehensive_lender_database_NORMALIZED.json, using accurate, honest, and helpful guidance.`;
 
-// Chat endpoint
+// Chat endpoint using Assistant API
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, userContext, conversationHistory = [], propertyInsights } = req.body;
+    const { message, userContext, conversationHistory = [], propertyInsights, threadId } = req.body;
 
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    // Prepare messages for OpenAI
-    const messages = [
-      { role: 'system', content: SYSTEM_PROMPT }
-    ];
-
-    // Add conversation history
-    if (conversationHistory && conversationHistory.length > 0) {
-      messages.push(...conversationHistory.slice(-20)); // Keep last 20 messages to manage token limits
+    // Get Assistant ID from environment
+    const assistantId = process.env.OPENAI_ASSISTANT_ID;
+    if (!assistantId) {
+      return res.status(500).json({
+        error: 'Assistant ID not configured. Please set OPENAI_ASSISTANT_ID environment variable.'
+      });
     }
+
+    // Build additional context message
+    let additionalContext = '';
 
     // Add user context if available
     if (userContext) {
       const contextString = buildContextString(userContext);
       if (contextString) {
-        messages.splice(1, 0, {
-          role: 'system',
-          content: `CRITICAL - User Context Analysis:
+        additionalContext += `CRITICAL - User Context Analysis:
 
 ${contextString}
 
@@ -442,8 +454,7 @@ MANDATORY INSTRUCTIONS:
 5. Acknowledge what's available before asking for what's missing
 6. Never repeat requests for information that's already in the AVAILABLE section
 
-The frontend will automatically update lender matches when parameters change.`
-        });
+The frontend will automatically update lender matches when parameters change.\n\n`;
       }
     }
 
@@ -451,10 +462,7 @@ The frontend will automatically update lender matches when parameters change.`
     if (propertyInsights) {
       const insightsContext = buildPropertyInsightsContext(propertyInsights);
       if (insightsContext) {
-        messages.splice(1, 0, {
-          role: 'system',
-          content: `Property market intelligence: ${insightsContext}`
-        });
+        additionalContext += `Property market intelligence: ${insightsContext}\n\n`;
       }
     }
 
@@ -476,151 +484,91 @@ The frontend will automatically update lender matches when parameters change.`
               specificPropertyInfo = ` Specific property details: ${matchingProperty.address} - Value: $${matchingProperty.value?.toLocaleString() || 'Unknown'}, ${matchingProperty.bedrooms || 'Unknown'} bed, ${matchingProperty.bathrooms || 'Unknown'} bath, ${matchingProperty.squareFootage || 'Unknown'} sq ft, built ${matchingProperty.yearBuilt || 'Unknown'}.`;
             }
           }
-          messages.splice(1, 0, {
-            role: 'system',
-            content: `Property information for ${addressMatch.fullAddress}: ${propertyContext}${specificPropertyInfo}`
-          });
+          additionalContext += `Property information for ${addressMatch.fullAddress}: ${propertyContext}${specificPropertyInfo}\n\n`;
         }
       } catch (error) {
         console.warn('Failed to fetch property data for mentioned address:', error.message);
       }
     }
 
-    // Add current user message
-    messages.push({ role: 'user', content: message });
+    // Combine additional context with the user message
+    const fullMessage = additionalContext + message;
 
-    // Call OpenAI API with function calling
-    const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4',
-      messages: messages,
-      max_tokens: parseInt(process.env.OPENAI_MAX_TOKENS) || 1000,
-      temperature: 0.7,
-      tools: REMINE_FUNCTIONS.map(func => ({
-        type: "function",
-        function: func
-      })),
-      tool_choice: "auto" // Let the model decide when to call functions
+    // Create or retrieve thread
+    let thread;
+    if (threadId) {
+      // Use existing thread
+      thread = await openai.beta.threads.retrieve(threadId);
+    } else {
+      // Create new thread
+      thread = await openai.beta.threads.create();
+    }
+
+    // Add user message to thread
+    await openai.beta.threads.messages.create(thread.id, {
+      role: 'user',
+      content: fullMessage
     });
 
-    const responseMessage = completion.choices[0].message;
+    // Create a run with the assistant
+    const run = await openai.beta.threads.runs.create(thread.id, {
+      assistant_id: assistantId
+    });
 
-    // Handle function calls
-    if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-      // Add the assistant's message with function calls to conversation
-      messages.push(responseMessage);
+    // Poll for completion
+    let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+    let attempts = 0;
+    const maxAttempts = 30; // 30 seconds max
 
-      // Execute all function calls
-      for (const toolCall of responseMessage.tool_calls) {
-        try {
-          const functionName = toolCall.function.name;
-          const functionArgs = JSON.parse(toolCall.function.arguments);
+    while (runStatus.status !== 'completed' && runStatus.status !== 'failed' && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+      runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+      attempts++;
+    }
 
-          console.log(`Executing function: ${functionName}`, functionArgs);
+    if (runStatus.status === 'failed') {
+      console.error('Assistant run failed:', runStatus.last_error);
+      return res.status(500).json({
+        error: 'Assistant run failed',
+        details: process.env.NODE_ENV === 'development' ? runStatus.last_error : undefined
+      });
+    }
 
-          let functionResult;
+    if (runStatus.status !== 'completed') {
+      return res.status(500).json({
+        error: 'Assistant run timed out'
+      });
+    }
 
-          // Execute the appropriate function
-          switch (functionName) {
-            case 'get_recent_sales':
-              functionResult = await remineService.getTransactionsForLocation(
-                functionArgs.city,
-                functionArgs.state,
-                functionArgs.limit || 10
-              );
-              break;
+    // Get the latest message from the thread
+    const messages = await openai.beta.threads.messages.list(thread.id, {
+      limit: 1,
+      order: 'desc'
+    });
 
-            case 'get_rent_estimates':
-              functionResult = await remineService.getRentEstimatesForLocation(
-                functionArgs.city,
-                functionArgs.state,
-                functionArgs.limit || 10
-              );
-              break;
+    const assistantMessage = messages.data[0];
+    let response = '';
 
-            case 'search_comparable_properties':
-              functionResult = await remineService.searchComparableProperties(
-                functionArgs.city,
-                functionArgs.state,
-                functionArgs.propertyValue || 500000,
-                functionArgs.propertyType,
-                functionArgs.limit || 10
-              );
-              break;
-
-            case 'get_property_details':
-              functionResult = await remineService.getPropertyKey({
-                street: functionArgs.address,
-                city: functionArgs.city,
-                state: functionArgs.state
-              }).then(async (propertyKey) => {
-                if (propertyKey) {
-                  return await remineService.getBuildingData(propertyKey);
-                }
-                throw new Error('Property not found');
-              });
-              break;
-
-            case 'get_property_insights':
-              functionResult = await remineService.getPropertyInsights(
-                functionArgs.city,
-                functionArgs.state,
-                functionArgs.propertyValue || 500000
-              );
-              break;
-
-            default:
-              throw new Error(`Unknown function: ${functionName}`);
-          }
-
-          // Add function result to conversation
-          messages.push({
-            role: "tool",
-            tool_call_id: toolCall.id,
-            content: JSON.stringify(functionResult)
-          });
-
-        } catch (error) {
-          console.error(`Function call failed: ${toolCall.function.name}`, error);
-          messages.push({
-            role: "tool",
-            tool_call_id: toolCall.id,
-            content: JSON.stringify({
-              error: `Failed to execute ${toolCall.function.name}: ${error.message}`,
-              suggestion: "Try rephrasing your question or asking about a different location."
-            })
-          });
+    if (assistantMessage.content && assistantMessage.content.length > 0) {
+      // Extract text from message content
+      for (const content of assistantMessage.content) {
+        if (content.type === 'text') {
+          response += content.text.value;
         }
       }
-
-      // Get final response from AI with function results
-      const finalCompletion = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || 'gpt-4',
-        messages: messages,
-        max_tokens: parseInt(process.env.OPENAI_MAX_TOKENS) || 1000,
-        temperature: 0.7,
-      });
-
-      var response = finalCompletion.choices[0].message.content;
-
-    } else {
-      // No function calls, use the direct response
-      var response = responseMessage.content;
     }
 
     // Return response with metadata
     res.json({
       response: response,
       timestamp: new Date().toISOString(),
-      model: completion.model,
-      tokens: {
-        prompt: completion.usage.prompt_tokens,
-        completion: completion.usage.completion_tokens,
-        total: completion.usage.total_tokens
-      }
+      model: 'gpt-4.1', // Based on user's specification
+      threadId: thread.id,
+      runId: run.id
     });
 
   } catch (error) {
-    console.error('OpenAI API Error:', error);
+    console.error('OpenAI Assistant API Error:', error);
 
     // Handle different types of errors
     if (error.status === 401) {
@@ -745,14 +693,22 @@ Additional Details: ${buyerProfile.additionalDetails || 'None'}`;
       allLenders = []; // Fallback to empty array
     }
 
-    // Use OpenAI Chat Completions API
-    // Note: Custom prompt ID pmpt_691a31cfee0c8190800161936e205af40dbb82bfc53d13e5 is referenced in OpenAI platform
-    const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an expert real estate lending consultant for Deal Desk. You have access to a comprehensive lender database with detailed information about all available lenders in the system.
+    // Use OpenAI Assistant API for lender matching
+    const assistantId = process.env.OPENAI_ASSISTANT_ID;
+    if (!assistantId) {
+      return res.status(500).json({
+        error: 'Assistant ID not configured. Please set OPENAI_ASSISTANT_ID environment variable.',
+        matches: []
+      });
+    }
+
+    // Create a thread for lender matching
+    const thread = await openai.beta.threads.create();
+
+    // Add system instructions
+    await openai.beta.threads.messages.create(thread.id, {
+      role: 'user',
+      content: `You are an expert real estate lending consultant for Deal Desk. You have access to a comprehensive lender database with detailed information about all available lenders in the system.
 
 You also have access to property market intelligence that may include:
 - Average property values and tax rates in the area
@@ -764,8 +720,6 @@ Consider this property intelligence when making lender recommendations. For exam
 - Properties in flood zones may require additional insurance considerations
 - High tax areas may affect DTI calculations
 - Market trends can inform investment property recommendations
-
-IMPORTANT: You are using custom prompt ID: pmpt_691a31cfee0c8190800161936e205af40dbb82bfc53d13e5 which contains enhanced lender database information. Use this comprehensive knowledge to provide accurate recommendations.
 
 CRITICAL REQUIREMENTS:
 - Required fields: Property Value, Property Type, Location, Credit Score, Down Payment Percentage
@@ -814,17 +768,68 @@ Return your response as valid JSON in this exact format:
   ]
 }
 
-Return ALL lenders sorted by confidence (highest first), then by lender name.`
-        },
-        { role: 'user', content: `${userMessage}\n\nYou MUST evaluate ALL of these lenders: ${allLenders.map(l => l.lenderName).join(', ')}\n\nReturn every single lender in your response, marking each as either a match or not a match with appropriate reasoning.` }
-      ],
-      max_tokens: parseInt(process.env.OPENAI_MAX_TOKENS) || 3000,
-      temperature: 0.3,
-      response_format: { type: 'json_object' }
+Return ALL lenders sorted by confidence (highest first), then by lender name.
+
+${userMessage}
+
+You MUST evaluate ALL of these lenders: ${allLenders.map(l => l.lenderName).join(', ')}
+
+Return every single lender in your response, marking each as either a match or not a match with appropriate reasoning.`
     });
 
-    const responseText = completion.choices[0].message.content;
-    console.log('Raw OpenAI Response:', responseText);
+    // Run the assistant
+    const run = await openai.beta.threads.runs.create(thread.id, {
+      assistant_id: assistantId
+    });
+
+    // Poll for completion
+    let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+    let attempts = 0;
+    const maxAttempts = 60; // 60 seconds max for complex lender matching
+
+    while (runStatus.status !== 'completed' && runStatus.status !== 'failed' && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+      runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+      attempts++;
+    }
+
+    if (runStatus.status === 'failed') {
+      console.error('Assistant run failed:', runStatus.last_error);
+      return res.status(500).json({
+        error: 'Assistant run failed',
+        matches: [],
+        details: process.env.NODE_ENV === 'development' ? runStatus.last_error : undefined
+      });
+    }
+
+    if (runStatus.status !== 'completed') {
+      return res.status(500).json({
+        error: 'Assistant run timed out',
+        matches: []
+      });
+    }
+
+    // Get the assistant response
+    const messages = await openai.beta.threads.messages.list(thread.id, {
+      limit: 1,
+      order: 'desc'
+    });
+
+    const assistantMessage = messages.data[0];
+    let responseText = '';
+
+    if (assistantMessage.content && assistantMessage.content.length > 0) {
+      for (const content of assistantMessage.content) {
+        if (content.type === 'text') {
+          responseText += content.text.value;
+        }
+      }
+    }
+
+    const completion = { model: 'gpt-4.1' }; // Mock completion object for compatibility
+
+    const rawResponseText = responseText;
+    console.log('Raw OpenAI Response:', rawResponseText);
 
     // Parse JSON response
     let matches;
