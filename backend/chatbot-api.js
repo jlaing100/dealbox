@@ -1082,6 +1082,24 @@ function buildContextString(userContext) {
     parts.push(`Previously recommended lenders: ${lenders}`);
   }
 
+  // Add hypothetical scenario information
+  if (userContext.isHypothetical) {
+    parts.push(`HYPOTHETICAL SCENARIO: The current lender recommendations are based on hypothetical parameters, not the user's actual form data.`);
+    if (userContext.hypotheticalChanges) {
+      const changes = userContext.hypotheticalChanges;
+      const changeList = [];
+      if (changes.creditScore) changeList.push(`credit score: ${changes.creditScore}`);
+      if (changes.propertyValue) changeList.push(`property value: $${changes.propertyValue.toLocaleString()}`);
+      if (changes.downPaymentPercent) changeList.push(`down payment: ${changes.downPaymentPercent}%`);
+      if (changes.propertyType) changeList.push(`property type: ${changes.propertyType}`);
+      if (changes.investmentExperience) changeList.push(`investment experience: ${changes.investmentExperience}`);
+      if (changes.propertyLocation) changeList.push(`location: ${changes.propertyLocation}`);
+      if (changeList.length > 0) {
+        parts.push(`Hypothetical changes: ${changeList.join(', ')}`);
+      }
+    }
+  }
+
   // Add property insights from REmine API
   if (userContext.propertyInsights) {
     const insights = userContext.propertyInsights;

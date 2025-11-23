@@ -297,7 +297,9 @@ Could you please provide ${missingFields.length === 1 ? 'that information' : 'th
                             formData: formData,
                             lenderMatches: matches,
                             sessionState: this.chatService.sessionState,
-                            timestamp: new Date().toISOString()
+                            timestamp: new Date().toISOString(),
+                            isHypothetical: parameterChanges.isHypothetical || false,
+                            hypotheticalChanges: parameterChanges.isHypothetical ? parameterChanges : null
                         };
                         await this.chatService.sendMessage(recommendationsMessage, userContext, propertyInsights);
                     } catch (error) {
@@ -693,14 +695,14 @@ Could you please provide ${missingFields.length === 1 ? 'that information' : 'th
         window.open(`tel:${phoneNumber}`, '_self');
     }
     
-    showLenderCards(matches) {
+    showLenderCards(matches, isHypothetical = false, hypotheticalChanges = null) {
         const solutionCards = document.getElementById('solution-cards');
         const solutionsCount = document.getElementById('solutions-count');
 
         // Clear existing cards
         solutionCards.innerHTML = '';
 
-        // Update count
+        // Update count with hypothetical indicator
         const matchCount = matches ? matches.filter(m => m.isMatch).length : 0;
         const totalCount = matches ? matches.length : 0;
         let countText;
@@ -712,6 +714,11 @@ Could you please provide ${missingFields.length === 1 ? 'that information' : 'th
         } else {
             countText = `${matchCount} match${matchCount > 1 ? 'es' : ''} found (${totalCount} total)`;
         }
+
+        if (isHypothetical) {
+            countText += ' - HYPOTHETICAL SCENARIO';
+        }
+
         solutionsCount.textContent = countText;
 
         // Sort matches: matches first (by confidence), then non-matches (by name)
@@ -726,7 +733,7 @@ Could you please provide ${missingFields.length === 1 ? 'that information' : 'th
             // Create and animate cards
             sortedMatches.forEach((match, index) => {
                 setTimeout(() => {
-                    const cardElement = this.createLenderCard(match);
+                    const cardElement = this.createLenderCard(match, isHypothetical, hypotheticalChanges);
                     solutionCards.appendChild(cardElement);
 
                     // Trigger animation
@@ -742,10 +749,10 @@ Could you please provide ${missingFields.length === 1 ? 'that information' : 'th
         }
     }
     
-    createLenderCard(lenderMatch) {
+    createLenderCard(lenderMatch, isHypothetical = false, hypotheticalChanges = null) {
         const cardDiv = document.createElement('div');
         const isMatch = lenderMatch.isMatch === true;
-        cardDiv.className = `solution-card ${isMatch ? 'match' : 'no-match'}`;
+        cardDiv.className = `solution-card ${isMatch ? 'match' : 'no-match'} ${isHypothetical ? 'hypothetical' : ''}`;
 
         const scoreBadge = lenderMatch.confidence > 0.8 ? 'excellent' :
                           lenderMatch.confidence > 0.6 ? 'good' : 'fair';
@@ -781,6 +788,9 @@ Could you please provide ${missingFields.length === 1 ? 'that information' : 'th
         const contactButtonsHtml = contactButtons.length > 0 ?
             `<div class="contact-buttons">${contactButtons.join('')}</div>` : '';
 
+        const hypotheticalIndicator = isHypothetical ?
+            `<div class="hypothetical-indicator">⚠️ Hypothetical Scenario</div>` : '';
+
         cardDiv.innerHTML = `
             <div class="lender-header">
                 <h3 class="card-title">${lenderMatch.lenderName}</h3>
@@ -789,6 +799,7 @@ Could you please provide ${missingFields.length === 1 ? 'that information' : 'th
                 </div>
             </div>
             <p class="card-subtitle">${lenderMatch.programName || lenderMatch.lenderName}</p>
+            ${hypotheticalIndicator}
             <div class="match-reason">
                 <p>${isMatch ? (lenderMatch.matchSummary || 'Good match for your profile') : (lenderMatch.nonMatchReason || 'Does not meet requirements')}</p>
             </div>
@@ -1029,10 +1040,13 @@ class ChatService {
                 const parameterChanges = this.detectParameterChanges(message);
                 console.log('🔍 Parameter detection result:', parameterChanges);
 
-                // Always update form fields if parameters were detected, regardless of matches
+                // Handle parameter changes - different behavior for hypotheticals vs actual changes
                 if (parameterChanges.hasChanges) {
-                    this.updateFormFieldsFromChat(parameterChanges);
-                    
+                    // Only update form fields if this is NOT a hypothetical scenario
+                    if (!parameterChanges.isHypothetical) {
+                        this.updateFormFieldsFromChat(parameterChanges);
+                    }
+
                     // ALWAYS get new lender matches when parameters change
                     try {
                         let formData = window.app.collectFormData();
@@ -1065,7 +1079,7 @@ class ChatService {
                             // Got new matches, update display
                             console.log('🎯 Found new matches:', newMatches.length, 'lenders');
                             window.app.currentMatches = newMatches;
-                            window.app.showLenderCards(newMatches);
+                            window.app.showLenderCards(newMatches, parameterChanges.isHypothetical, parameterChanges);
                             console.log('✅ Updated lender cards with', newMatches.length, 'lenders');
 
                             // Update status indicator for successful matches
@@ -1293,6 +1307,7 @@ class ChatService {
         const lowerMessage = message.toLowerCase();
         const changes = {
             hasChanges: false,
+            isHypothetical: false,
             creditScore: null,
             downPaymentPercent: null,
             propertyValue: null,
@@ -1300,6 +1315,25 @@ class ChatService {
             investmentExperience: null,
             propertyLocation: null
         };
+
+        // Detect if this is a hypothetical scenario
+        const hypotheticalPatterns = [
+            /what\s+if/i,
+            /suppose\s+(?:i|my|we)/i,
+            /imagine\s+(?:i|my|we)/i,
+            /if\s+(?:i|my|we)\s+(?:had|was|were|could)/i,
+            /hypothetically/i,
+            /assuming/i,
+            /let['']?s\s+say/i
+        ];
+
+        for (const pattern of hypotheticalPatterns) {
+            if (pattern.test(message)) {
+                changes.isHypothetical = true;
+                console.log('🔍 Detected hypothetical language');
+                break;
+            }
+        }
 
         // Detect credit score changes - including hypothetical changes
         const creditPatterns = [
