@@ -187,10 +187,33 @@ class LenderMatchingApp {
         // Collect form data
         const formData = this.collectFormData();
 
+        // Store form data for chat context
+        this.chatService.sessionState.formData = formData;
+        this.chatService.sessionState.formDataTimestamp = new Date().toISOString();
+
         // Show loading state
         submitBtn.disabled = true;
         submitBtn.textContent = 'Analyzing...';
         this.showLoadingScreen();
+
+        // Transition to Q&A layout immediately
+        this.displayResults([], false);
+
+        // Auto-post initial deal analysis message
+        setTimeout(async () => {
+            try {
+                const analysisMessage = this.generateDealAnalysisMessage(formData);
+                const userContext = {
+                    formData: formData,
+                    lenderMatches: [], // No matches yet, still analyzing
+                    sessionState: this.chatService.sessionState,
+                    timestamp: new Date().toISOString()
+                };
+                await this.chatService.sendMessage(analysisMessage, userContext);
+            } catch (error) {
+                console.warn('Failed to send initial deal analysis message:', error);
+            }
+        }, 100);
 
         try {
             // Get property insights from REmine API
@@ -222,10 +245,28 @@ class LenderMatchingApp {
             const requiresMoreInfo = result.requiresMoreInfo || false;
             const matches = result.matches || [];
 
-            // Display results
+            // Update results with actual lender matches
             this.displayResults(matches, requiresMoreInfo);
 
-            // If help field has content, send it as initial chat message
+            // Send follow-up message with lender recommendations
+            if (!requiresMoreInfo && matches && matches.length > 0) {
+                setTimeout(async () => {
+                    try {
+                        const recommendationsMessage = this.generateRecommendationsMessage(matches, formData);
+                        const userContext = {
+                            formData: formData,
+                            lenderMatches: matches,
+                            sessionState: this.chatService.sessionState,
+                            timestamp: new Date().toISOString()
+                        };
+                        await this.chatService.sendMessage(recommendationsMessage, userContext, propertyInsights);
+                    } catch (error) {
+                        console.warn('Failed to send lender recommendations to chat:', error);
+                    }
+                }, 500);
+            }
+
+            // If help field has content, send it as additional chat message
             if (formData.helpQuery && !requiresMoreInfo) {
                 // Add a small delay to let the results display first
                 setTimeout(async () => {
@@ -291,21 +332,109 @@ class LenderMatchingApp {
         }
     }
 
+    generateDealAnalysisMessage(formData) {
+        const parts = [];
+
+        // Build summary of user's deal parameters
+        parts.push("Based on your submitted deal information:");
+
+        if (formData.propertyValue) {
+            parts.push(`• Property Value: $${formData.propertyValue.toLocaleString()}`);
+        }
+
+        if (formData.propertyType) {
+            parts.push(`• Property Type: ${formData.propertyType.replace('_', ' ')}`);
+        }
+
+        if (formData.propertyLocation) {
+            parts.push(`• Location: ${formData.propertyLocation}`);
+        }
+
+        if (formData.downPaymentPercent !== null) {
+            parts.push(`• Down Payment: ${formData.downPaymentPercent}%`);
+        }
+
+        if (formData.propertyVacant !== null) {
+            parts.push(`• Property Vacant: ${formData.propertyVacant === 'yes' ? 'Yes' : 'No'}`);
+        }
+
+        if (formData.currentRent) {
+            parts.push(`• Current Rent: $${formData.currentRent.toLocaleString()}/month`);
+        }
+
+        if (formData.creditScore) {
+            parts.push(`• Credit Score: ${formData.creditScore}`);
+        }
+
+        if (formData.investmentExperience) {
+            parts.push(`• Investment Experience: ${formData.investmentExperience.replace('_', ' ')}`);
+        }
+
+        parts.push("");
+        parts.push("I'm analyzing your deal against our comprehensive lender database to find the best matching lenders for your situation. This may take a moment as I review the latest rates, terms, and requirements from multiple lenders.");
+
+        return parts.join('\n');
+    }
+
+    generateRecommendationsMessage(matches, formData) {
+        const parts = [];
+
+        parts.push("## Lender Recommendations");
+        parts.push("");
+        parts.push(`I've analyzed your deal parameters against our comprehensive lender database and found ${matches.length} matching lenders based on the data you provided. Here are the top recommendations:`);
+        parts.push("");
+
+        // Show top 3 matches with key details
+        const topMatches = matches.slice(0, 3);
+        topMatches.forEach((match, index) => {
+            const confidencePercent = Math.round(match.confidence * 100);
+            parts.push(`**${index + 1}. ${match.lenderName} - ${match.programName}**`);
+            parts.push(`• Match Confidence: ${confidencePercent}%`);
+            parts.push(`• Why this matches: ${match.reason}`);
+
+            if (match.maxLTV) {
+                parts.push(`• Maximum LTV: ${match.maxLTV}%`);
+            }
+            if (match.minCreditScore) {
+                parts.push(`• Minimum Credit Score: ${match.minCreditScore}`);
+            }
+            if (match.maxLoanAmount) {
+                parts.push(`• Maximum Loan Amount: $${match.maxLoanAmount.toLocaleString()}`);
+            }
+            if (match.website) {
+                parts.push(`• Website: ${match.website}`);
+            }
+            parts.push("");
+        });
+
+        if (matches.length > 3) {
+            const remaining = matches.length - 3;
+            parts.push(`Plus ${remaining} additional lenders that may be suitable for your deal.`);
+            parts.push("");
+        }
+
+        parts.push("These recommendations are based on the lender data in our database, including credit requirements, loan-to-value ratios, property types supported, and loan amount limits. Each lender's programs have different eligibility criteria, so I recommend reviewing the specific details and contacting them directly for the most current rates and terms.");
+        parts.push("");
+        parts.push("Would you like me to explain any of these recommendations in more detail, or help you compare specific lenders?");
+
+        return parts.join('\n');
+    }
+
     collectFormData() {
         const downPaymentValue = document.getElementById('down-payment-percent').value;
         let downPaymentPercent = null;
-        
+
         // Convert dropdown values to numeric percentages
         if (downPaymentValue === 'under_15') downPaymentPercent = 10;
         else if (downPaymentValue === '15') downPaymentPercent = 15;
         else if (downPaymentValue === '20') downPaymentPercent = 20;
         else if (downPaymentValue === '25') downPaymentPercent = 25;
         else if (downPaymentValue === '30_plus') downPaymentPercent = 30;
-        
+
         // Get property type value, filtering out placeholder
         const propertyTypeValue = document.getElementById('property-type').value;
         const propertyType = (propertyTypeValue && propertyTypeValue !== 'Select type...') ? propertyTypeValue : null;
-        
+
         return {
             propertyValue: parseFloat(document.getElementById('property-value').value) || null,
             propertyType: propertyType,

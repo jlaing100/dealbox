@@ -1,5 +1,17 @@
+const { LenderMatcher, findMissingFields } = require('../lib/lenderMatcher');
+
 // Vercel serverless function for lender matching
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).end();
+    return;
+  }
+
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     res.status(405).json({ error: 'Method not allowed' });
@@ -7,31 +19,59 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { buyerProfile } = req.body;
+    const { buyerProfile, propertyInsights } = req.body;
 
     if (!buyerProfile) {
       return res.status(400).json({ error: 'Buyer profile is required' });
     }
 
-    // Simple fallback response
+    console.log('🔍 Processing lender match request:', {
+      buyerProfile: JSON.stringify(buyerProfile, null, 2),
+      hasPropertyInsights: !!propertyInsights
+    });
+
+    // Check for missing required fields
+    const missingFields = findMissingFields(buyerProfile);
+    if (missingFields.length > 0) {
+      return res.status(200).json({
+        requiresMoreInfo: true,
+        missingFields,
+        message: `Additional information needed: ${missingFields.join(', ')}`,
+        matches: [],
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Initialize lender matcher
+    let matcher;
+    try {
+      matcher = new LenderMatcher();
+    } catch (error) {
+      console.error('Failed to initialize lender matcher:', error);
+      return res.status(500).json({
+        error: 'Failed to initialize lender matching system',
+        matches: [],
+        fallback: true,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Find matching lenders
+    const matches = matcher.findTopMatches(buyerProfile, 5);
+
+    console.log(`✅ Found ${matches.length} lender matches for profile:`, {
+      propertyValue: buyerProfile.propertyValue,
+      propertyType: buyerProfile.propertyType,
+      creditScore: buyerProfile.creditScore,
+      downPaymentPercent: buyerProfile.downPaymentPercent
+    });
+
     const response = {
-      matches: [
-        {
-          lenderName: "Sample Lender",
-          programName: "Investment Property Program",
-          confidence: 0.85,
-          isMatch: true,
-          matchSummary: "This lender offers competitive rates for investment properties.",
-          maxLTV: 80,
-          minCreditScore: 680,
-          maxLoanAmount: 2000000,
-          website: "https://samplelender.com",
-          contact_phone: "(555) 123-4567"
-        }
-      ],
+      matches: matches,
+      requiresMoreInfo: false,
       timestamp: new Date().toISOString(),
-      fallback: true,
-      message: "Lender matching is currently using fallback mode. Full AI-powered matching coming soon."
+      fallback: false,
+      totalMatches: matches.length
     };
 
     res.status(200).json(response);
@@ -40,7 +80,9 @@ export default async function handler(req, res) {
     res.status(500).json({
       error: 'Internal server error',
       matches: [],
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      fallback: true,
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      timestamp: new Date().toISOString()
     });
   }
 }
