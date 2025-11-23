@@ -92,9 +92,9 @@ app.use(express.static(path.join(__dirname)));
 const REQUIRED_FIELDS = [
   'propertyValue',
   'propertyType',
-  'propertyLocation',
   'creditScore',
-  'downPaymentPercent'
+  'downPaymentPercent',
+  'investmentExperience'
 ];
 
 // Function to validate buyer profile has all required information
@@ -312,9 +312,12 @@ CRITICAL: Before asking for ANY information, check the "Current user context" me
 Required fields for lender matching:
 - Property Value
 - Property Type
-- Location (City, State)
 - Credit Score
 - Down Payment Percentage
+- Investment Experience
+
+Optional fields:
+- Location (City, State)
 
 IMPORTANT RULES:
 1. Check user context FIRST - if a field is listed in the context, the user has already provided it
@@ -1098,9 +1101,9 @@ function buildContextString(userContext) {
   const REQUIRED_FIELDS = {
     propertyValue: 'Property Value',
     propertyType: 'Property Type',
-    propertyLocation: 'Location',
     creditScore: 'Credit Score',
-    downPaymentPercent: 'Down Payment Percentage'
+    downPaymentPercent: 'Down Payment Percentage',
+    investmentExperience: 'Investment Experience'
   };
 
   // CRITICAL: Add conversation changes first (highest priority)

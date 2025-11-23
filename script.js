@@ -452,26 +452,26 @@ class LenderMatchingApp {
         const requiredFields = {
             'propertyValue': 'Property Value',
             'propertyType': 'Property Type',
-            'propertyLocation': 'Location',
             'creditScore': 'Credit Score',
-            'downPaymentPercent': 'Down Payment Percentage'
+            'downPaymentPercent': 'Down Payment Percentage',
+            'investmentExperience': 'Investment Experience'
         };
-        
+
         const missingFields = [];
-        
+
         for (const [field, label] of Object.entries(requiredFields)) {
             if (!formData[field] || formData[field] === 'Select type...' || formData[field] === 'Select percentage...') {
                 missingFields.push(label);
             }
         }
-        
+
         if (missingFields.length > 0) {
             return {
                 isValid: false,
                 message: `Please provide the following required information: ${missingFields.join(', ')}`
             };
         }
-        
+
         return { isValid: true };
     }
 
@@ -816,9 +816,9 @@ class LenderMatchingApp {
                     <ul class="required-info-list">
                         <li>Property Value</li>
                         <li>Property Type</li>
-                        <li>Location (City, State)</li>
                         <li>Credit Score</li>
                         <li>Down Payment Percentage</li>
+                        <li>Investment Experience</li>
                     </ul>
                 </div>
                 <p class="help-text">Once you provide this information, I'll be able to show you all available lenders with detailed match analysis and contact information.</p>

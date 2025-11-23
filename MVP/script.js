@@ -79,7 +79,7 @@ class LenderMatchingApp {
             'property-vacant': 'propertyVacant',
             'investment-experience': 'investmentExperience'
         };
-        this.requiredFieldKeys = ['propertyValue', 'propertyType', 'propertyLocation', 'downPaymentPercent', 'creditScore'];
+        this.requiredFieldKeys = ['propertyValue', 'propertyType', 'downPaymentPercent', 'creditScore', 'investmentExperience'];
         this.init();
     }
     
@@ -853,9 +853,9 @@ class LenderMatchingApp {
         const missing = [];
         if (!profile.propertyValue) missing.push('propertyValue');
         if (!profile.propertyType) missing.push('propertyType');
-        if (!profile.propertyLocation) missing.push('propertyLocation');
         if (profile.downPaymentPercent == null) missing.push('downPaymentPercent');
         if (!profile.creditScore) missing.push('creditScore');
+        if (!profile.investmentExperience) missing.push('investmentExperience');
         return missing;
     }
 
