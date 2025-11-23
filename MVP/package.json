@@ -1,0 +1,22 @@
+{
+  "name": "dealdesk-mvp",
+  "version": "1.0.0",
+  "description": "DealDesk MVP - AI-Powered Real Estate Solutions",
+  "main": "index.js",
+  "scripts": {
+    "dev": "echo 'Use: npx vercel dev'",
+    "build": "echo 'No build required for serverless functions'",
+    "start": "echo 'Use: npx vercel dev'"
+  },
+  "dependencies": {
+    "openai": "^4.20.0",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "@vercel/node": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "type": "commonjs"
+}

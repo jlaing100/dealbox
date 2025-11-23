@@ -1,0 +1,552 @@
+{
+  "database_info": {
+    "created_date": "2025-10-20",
+    "description": "Comprehensive lender database for real estate investment platform matching buyers/investors with appropriate lenders",
+    "data_sources": [
+      "LoanStream Wholesale",
+      "Archome LLC",
+      "AOMS (Angel Oak Mortgage Solutions)",
+      "InvestorX",
+      "HomeXpress Non-QM Programs"
+    ]
+  },
+  "lenders": {
+    "loanstream_wholesale": {
+      "company_name": "LoanStream Wholesale",
+      "website": "https://loanstreamwholesale.com",
+      "corporate_address": "19000 MacArthur Blvd, Ste. 200 Irvine, CA 92612",
+      "rankings": [
+        "Top #4 Wholesale Lender (2025 Scotsman Guide Rankings)",
+        "#1 Non-QM Lender (2025 Scotsman Guide Rankings)",
+        "#1 in Non-QM Origination in CA and TX (Forcasa monthly Pulse Report 2024)"
+      ],
+      "specialty": "Non-QM and Investment Property Lending",
+      "loan_programs": [
+        {
+          "program_type": "NON-QM DSCR INVESTOR",
+          "purpose": "Investment Property Financing",
+          "description": "Debt Service Coverage Ratio based lending for investors"
+        },
+        {
+          "program_type": "BUSINESS PURPOSE LENDING",
+          "purpose": "Investment Property Financing",
+          "description": "Business purpose loans for real estate investors"
+        },
+        {
+          "program_type": "NON-QM BANK STATEMENT",
+          "purpose": "Alternative Documentation",
+          "description": "Bank statement based qualification"
+        },
+        {
+          "program_type": "NON-QM ASSET UTILIZATION",
+          "purpose": "Asset-based lending",
+          "description": "Asset depletion calculation for qualification"
+        }
+      ],
+      "investment_property_focus": true,
+      "detailed_guidelines": "Limited detailed guidelines available from web source - requires broker approval package for specific terms"
+    },
+    "archome_llc": {
+      "company_name": "Arc Home LLC",
+      "website": "https://wholesale.archomellc.com",
+      "specialty": "Non-QM, Non-Agency, Conventional, Government, and Jumbo programs",
+      "loan_programs": [
+        {
+          "program_name": "Access & Edge Agency Plus",
+          "loan_type": "Non-QM, Jumbo",
+          "property_types": ["Residential"],
+          "eligibility": "Full Doc",
+          "tiers": [
+            {
+              "tier": "Access",
+              "max_loan_amount": "$3,500,000",
+              "max_ltv": "90%",
+              "min_down_payment": "10%",
+              "min_credit_score": "660 FICO"
+            },
+            {
+              "tier": "Edge", 
+              "max_loan_amount": "$3,000,000",
+              "max_ltv": "85%",
+              "min_down_payment": "15%",
+              "min_credit_score": "660 FICO"
+            }
+          ]
+        },
+        {
+          "program_name": "Access Clean Slate",
+          "loan_type": "Non-QM",
+          "property_types": ["Residential"],
+          "eligibility": "Full Doc, Alt Doc",
+          "qualification_criteria": ["1x30 housing history OR derogatory credit seasoned 12-48 months"]
+        }
+      ],
+      "investment_property_support": true
+    },
+    "aoms_angel_oak": {
+      "company_name": "Angel Oak Mortgage Solutions (AOMS)",
+      "specialty": "Non-QM, Bank Statement, DSCR, Investment Property Lending",
+      "programs": {
+        "portfolio_select": {
+          "program_name": "AOMS Portfolio Select",
+          "effective_date": "September 30, 2025",
+          "property_types": ["Primary Residence", "Second Homes", "Investment Properties"],
+          "loan_purposes": ["Purchase", "Rate Term", "Cash-Out"],
+          "credit_requirements": {
+            "primary_residence": {
+              "purchase_rate_term": {
+                "min_fico_640": {"max_ltv": "75%", "min_down_payment": "25%"},
+                "min_fico_660": {"max_ltv": "80%", "min_down_payment": "20%"},
+                "min_fico_700": {"max_ltv": "85%", "min_down_payment": "15%"},
+                "min_fico_740": {"max_ltv": "80%", "max_loan_amount": "$2.5MM"}
+              },
+              "cash_out": {
+                "min_fico_640": {"max_ltv": "70%"},
+                "min_fico_660": {"max_ltv": "80%"},
+                "min_fico_740": {"max_ltv": "80%", "max_loan_amount": "$2.5MM"}
+              }
+            },
+            "investment_properties": {
+              "all_purposes": {
+                "min_fico_640": {"max_ltv": "70%", "min_down_payment": "30%"},
+                "min_fico_680": {"max_ltv": "80%", "min_down_payment": "20%"}
+              }
+            }
+          },
+          "loan_amounts": {
+            "investment_properties": {"max": "$1.5MM"},
+            "primary_residence": {"max": "$2.5MM"},
+            "second_homes": {"max": "$2.5MM"}
+          },
+          "max_dti": "50%",
+          "gift_funds_allowed": true
+        },
+        "platinum": {
+          "program_name": "AOMS Platinum",
+          "effective_date": "September 30, 2025",
+          "min_loan_amount": "$150,000",
+          "property_types": ["Primary Residence", "Second Homes", "Investment Properties"],
+          "credit_requirements": {
+            "investment_properties": {
+              "purchase_rate_term": {
+                "min_fico_680": {"max_ltv": "75%", "max_loan_amount": "$1.0MM"},
+                "min_fico_700": {"max_ltv": "80%", "max_loan_amount": "$2.0MM"}
+              },
+              "cash_out": {
+                "min_fico_680": {"max_ltv": "65%", "max_loan_amount": "$2.0MM"},
+                "min_fico_700": {"max_ltv": "80%", "max_loan_amount": "$3.0MM"}
+              }
+            }
+          },
+          "max_dti": "50%",
+          "asset_qualifier_program": {
+            "available": true,
+            "investment_properties": {
+              "purchase_rate_term": {"min_fico": "700", "max_ltv": "75%"},
+              "cash_out": {"min_fico": "720", "max_ltv": "70%", "max_cash_out": "$500,000"}
+            }
+          }
+        },
+        "bank_statement": {
+          "program_name": "AOMS Bank Statement",
+          "effective_date": "September 30, 2025",
+          "documentation": "Business or Personal Bank Statements for 24 or 12 months",
+          "property_types": ["Primary Residence", "Second Homes", "Investment Properties"],
+          "credit_requirements": {
+            "investment_properties": {
+              "purchase_rate_term": {
+                "min_fico_660": {"max_ltv": "60%", "min_down_payment": "40%"},
+                "min_fico_700": {"max_ltv": "85%", "min_down_payment": "15%"}
+              },
+              "cash_out": {
+                "min_fico_660": {"max_ltv": "60%"},
+                "min_fico_720": {"max_ltv": "80%"}
+              }
+            },
+            "12_month_option": {"min_fico": "640"}
+          },
+          "max_dti": "50%",
+          "general_max_ltv": {
+            "primary_residence": "85%",
+            "investment_properties": "80%"
+          }
+        },
+        "icf_investor_cash_flow": {
+          "program_name": "AOMS ICF (Investor Cash Flow)",
+          "effective_date": "September 30, 2025",
+          "specialty": "Investment Properties Only",
+          "property_types": ["1-4 Units", "Condominiums", "Condotel"],
+          "credit_requirements": {
+            "1_unit_investment": {
+              "purchase_only": {"min_fico": "720", "max_ltv": "85%", "min_down_payment": "15%"},
+              "cash_out": {
+                "min_fico_680": {"max_ltv": "65%"},
+                "min_fico_700": {"max_ltv": "75%"}
+              }
+            },
+            "2_4_units_investment": {
+              "purchase_only": {"min_fico": "720", "max_ltv": "85%", "min_down_payment": "15%"},
+              "cash_out": {
+                "min_fico_680": {"max_ltv": "65%"},
+                "min_fico_700": {"max_ltv": "75%"}
+              }
+            },
+            "foreign_national": {
+              "min_fico_680": {"max_ltv": "60%"},
+              "min_fico_700": {"max_ltv": "80%"}
+            }
+          },
+          "loan_amounts": {
+            "min": "$100,000",
+            "max": "$3,000,000",
+            "condotel_max": "$1,000,000"
+          },
+          "dscr_requirements": {
+            "minimum": "1.00",
+            "foreign_national": "0.80",
+            "no_dscr_option": true
+          },
+          "product_types": ["30YR Fixed", "30YR Fixed-Interest Only", "5/6 SOFR ARM", "7/6 SOFR ARM"],
+          "prepayment_penalty_options": ["5 years", "4 years", "3 years", "2 years", "1 year", "No PPP"],
+          "seller_concessions": "Up to 6% towards closing"
+        },
+        "ces_heloc": {
+          "program_name": "AOMS CES & HELOC",
+          "effective_date": "September 16, 2025",
+          "products": {
+            "closed_end_second": {
+              "property_types": ["Primary Residence", "Second Homes", "Investment Properties"],
+              "credit_requirements": {
+                "investment_properties": {
+                  "min_fico": "720",
+                  "max_ltv": "70%",
+                  "max_loan_amount": "$500,000"
+                },
+                "dscr_investment": {
+                  "rate_term": {"min_fico": "720", "max_ltv": "75%"},
+                  "cash_out": {"min_fico": "700", "max_ltv": "70%"},
+                  "max_loan_amount": "$350,000",
+                  "min_dscr": "1.2"
+                }
+              },
+              "product_type": "20-YR Fixed",
+              "min_ownership": "12 months",
+              "max_dti": "50%"
+            },
+            "heloc": {
+              "property_types": ["Primary Residence", "Second Homes", "Investment Properties"],
+              "credit_requirements": {
+                "investment_properties": {
+                  "min_fico": "700",
+                  "max_ltv": "80%",
+                  "max_line_amount": "$400,000"
+                }
+              },
+              "product_type": "25-YR (10 Yr Draw, 15 Yr Repay)",
+              "rate_structure": {
+                "ceiling": "18.000%",
+                "floor": "4.000%"
+              },
+              "min_ownership": "12 months",
+              "max_dti": "50%"
+            }
+          }
+        }
+      }
+    },
+    "investorx": {
+      "company_name": "InvestorX",
+      "specialty": "Investment Property DSCR Lending",
+      "rate_sheet_date": "Current Pricing",
+      "loan_programs": {
+        "business_purpose_dscr": {
+          "property_types": ["2-4 Units", "Condotel", "Short Term Rental", "Rural Property", "High-Rise Condo"],
+          "loan_purposes": ["Purchase", "Rate/Term Refi", "Cash-Out"],
+          "credit_requirements_by_loan_amount": {
+            "$1.5M_loans": {
+              "purchase": {
+                "fico_760_720": {"max_ltv": "80%", "min_down_payment": "20%"},
+                "fico_700": {"max_ltv": "80%", "min_down_payment": "20%"},
+                "fico_680": {"max_ltv": "75%", "min_down_payment": "25%"},
+                "fico_660": {"max_ltv": "75%", "min_down_payment": "25%"},
+                "fico_640": {"max_ltv": "70%", "min_down_payment": "30%"},
+                "fico_620": {"max_ltv": "70%", "min_down_payment": "30%"}
+              },
+              "cash_out": {
+                "fico_760_720": {"max_ltv": "80%"},
+                "fico_700_680": {"max_ltv": "75%"},
+                "fico_660_620": {"max_ltv": "70%"}
+              }
+            },
+            "$2M_loans": {
+              "purchase": {
+                "fico_760_720": {"max_ltv": "75%", "min_down_payment": "25%"},
+                "fico_700": {"max_ltv": "70%", "min_down_payment": "30%"},
+                "fico_680_660": {"max_ltv": "75%", "min_down_payment": "25%"},
+                "fico_640": {"max_ltv": "70%", "min_down_payment": "30%"},
+                "fico_620": {"max_ltv": "65%", "min_down_payment": "35%"}
+              }
+            },
+            "$2.5M_loans": {
+              "purchase": {
+                "fico_760_720": {"max_ltv": "70%", "min_down_payment": "30%"},
+                "fico_700": {"max_ltv": "65%", "min_down_payment": "35%"}
+              }
+            }
+          },
+          "dscr_requirements": {
+            "1.25_plus": "Favorable pricing adjustment",
+            "1.00_to_1.24": "Neutral pricing",
+            "0.75_to_0.99": "Pricing adjustment applied",
+            "no_dscr_option": "Available with higher down payment requirements"
+          },
+          "documentation_options": ["Full Doc", "Alt Doc (12 or 24 Months)"],
+          "property_adjustments": {
+            "condotel": "Pricing adjustment",
+            "short_term_rental": "Pricing adjustment",
+            "rural_property": "Pricing adjustment",
+            "high_rise_condo": "Pricing adjustment"
+          },
+          "fees": {
+            "agency_underwriting": "$1,095",
+            "non_qm_consumer": "$1,595", 
+            "non_qm_business": "$1,695",
+            "administration": "$149",
+            "entity_review": "$595"
+          },
+          "max_bpc": {
+            "consumer": "2.750%",
+            "business": "5.000%"
+          }
+        }
+      }
+    },
+    "homexpress": {
+      "company_name": "HomeXpress",
+      "specialty": "Non-QM Programs",
+      "loan_programs": {
+        "primex": {
+          "program_name": "PrimeX (Consumer Purpose Prime Alternative)",
+          "min_credit_score": "660",
+          "max_ltv": "80%",
+          "min_down_payment": "20%",
+          "max_dti": "50%",
+          "loan_amounts": {"min": "$100,000", "max": "$4,000,000"},
+          "property_types": ["SFR", "2-4 Units", "PUD", "Condo", "Rural", "Warrantable & Non & High Rise Condos"],
+          "occupancy": "Owner-Occupied Only",
+          "documentation": ["Full Doc", "1 Year Full Doc", "12/24 Bank Statements", "1099", "Lease Agreements", "Asset Xpress"]
+        },
+        "corex": {
+          "program_name": "CoreX (Consumer Purpose Traditional Non-QM)",
+          "credit_requirements": {
+            "primary_wage_earner": "600",
+            "non_owner_occupied": "660"
+          },
+          "max_ltv": "80%",
+          "min_down_payment": "20%",
+          "max_dti": "55%",
+          "loan_amounts": {"min": "$100,000", "max": "$3,000,000", "condotel_min": "$150,000"},
+          "property_types": ["SFR", "2-4 Units", "PUD", "Condo", "Rural", "STR", "Condotel", "Warrantable & Non & High Rise Condos"],
+          "occupancy": "Available for Non-Owner Occupied",
+          "documentation": ["Full Doc", "1 Year Full Doc", "12/24 Bank Statements", "1099", "Lease Agreements", "P&L", "P&L Assist", "Asset Xpress", "Asset Assist"]
+        },
+        "investorx_income": {
+          "program_name": "InvestorXIncome (Business Purpose Income Qualified)",
+          "min_credit_score": "620",
+          "max_ltv": "70%",
+          "min_down_payment": "30%",
+          "max_dti": "50%",
+          "loan_amounts": {"min": "$100,000", "max": "$2,500,000", "condotel_min": "$150,000"},
+          "property_types": ["SFR", "2-4 Units", "PUD", "Condo", "Rural", "STR", "Condotel", "Warrantable & Non & High Rise Condos"],
+          "occupancy": "Non-Owner Occupied",
+          "documentation": ["Full Doc", "12/24 Months Bank Statements", "Market Rents Required"],
+          "reserves": "6 Months PITI (12 Months for loans >$2M)"
+        },
+        "investorx_dscr": {
+          "program_name": "InvestorXDSCR (Business Purpose Debt Service Coverage Ratio)",
+          "min_credit_score": "620",
+          "max_ltv": "70%",
+          "min_down_payment": "30%",
+          "dti": "N/A (Uses DSCR)",
+          "loan_amounts": {"min": "$100,000", "max": "$2,500,000", "condotel_min": "$150,000"},
+          "property_types": ["SFR", "2-4 Units", "PUD", "Condo", "Rural", "STR", "Condotel", "Warrantable & Non & High Rise Condos"],
+          "occupancy": "Non-Owner Occupied",
+          "documentation": ["12/24 Bank Statements", "12-Month Cash Flow", "1099", "Lease Agreements", "P&L", "Market Rents Required"],
+          "reserves": "3 Months PITI (65.01-80% LTV)",
+          "seasoning_requirements": {
+            "mortgage_history": "1x30 with LLPA, 700+ & DSCR .75+ Required",
+            "foreclosure_bk": "36 Months"
+          }
+        },
+        "investorx_no_ratio": {
+          "program_name": "InvestorXNoRatio (Business Purpose DSCR)",
+          "min_credit_score": "640",
+          "max_ltv": "60%",
+          "min_down_payment": "40%",
+          "dti": "N/A (Uses DSCR)",
+          "loan_amounts": {"min": "$200,000", "max": "$2,000,000"},
+          "property_types": ["SFR", "2-4 Units", "PUD", "Condo", "Rural", "STR", "Condotel", "Warrantable & Non & High Rise Condos"],
+          "occupancy": "Non-Owner Occupied",
+          "documentation": ["Full Doc", "12/24 Months Bank Statements", "Market Rents Required"],
+          "reserves": "6 Months PITI",
+          "seasoning_requirements": {
+            "mortgage_history": "1x30 with LLPA, 700+ & DSCR .75+ Required",
+            "foreclosure_bk": "36 Months"
+          }
+        }
+      }
+    }
+  },
+  "investment_property_summary": {
+    "description": "Quick reference for investment property lending options",
+    "lenders_by_down_payment": {
+      "15%_down": [
+        {
+          "lender": "AOMS ICF",
+          "program": "Purchase Only",
+          "min_fico": "720",
+          "max_ltv": "85%",
+          "max_loan": "$3,000,000"
+        },
+        {
+          "lender": "AOMS Platinum",
+          "program": "Purchase/Rate Term",
+          "min_fico": "700",
+          "max_ltv": "85%",
+          "max_loan": "$3,000,000"
+        }
+      ],
+      "20%_down": [
+        {
+          "lender": "AOMS Portfolio Select",
+          "program": "All Purposes",
+          "min_fico": "680",
+          "max_ltv": "80%",
+          "max_loan": "$1,500,000"
+        },
+        {
+          "lender": "HomeXpress CoreX",
+          "program": "Non-QM",
+          "min_fico": "660",
+          "max_ltv": "80%",
+          "max_loan": "$3,000,000"
+        },
+        {
+          "lender": "InvestorX",
+          "program": "DSCR",
+          "min_fico": "720-760",
+          "max_ltv": "80%",
+          "max_loan": "$1,500,000+"
+        }
+      ],
+      "30%_down": [
+        {
+          "lender": "AOMS Portfolio Select",
+          "program": "All Purposes",
+          "min_fico": "640",
+          "max_ltv": "70%",
+          "max_loan": "$1,500,000"
+        },
+        {
+          "lender": "HomeXpress InvestorXIncome",
+          "program": "Business Purpose",
+          "min_fico": "620",
+          "max_ltv": "70%",
+          "max_loan": "$2,500,000"
+        },
+        {
+          "lender": "HomeXpress InvestorXDSCR",
+          "program": "DSCR",
+          "min_fico": "620",
+          "max_ltv": "70%",
+          "max_loan": "$2,500,000"
+        }
+      ],
+      "40%_down": [
+        {
+          "lender": "HomeXpress InvestorXNoRatio",
+          "program": "No Ratio DSCR",
+          "min_fico": "640",
+          "max_ltv": "60%",
+          "max_loan": "$2,000,000"
+        }
+      ]
+    },
+    "lenders_by_credit_score": {
+      "620_plus": [
+        "HomeXpress InvestorXIncome",
+        "HomeXpress InvestorXDSCR"
+      ],
+      "640_plus": [
+        "AOMS Portfolio Select",
+        "AOMS Bank Statement",
+        "HomeXpress InvestorXNoRatio"
+      ],
+      "660_plus": [
+        "HomeXpress CoreX (NOO)",
+        "AOMS Bank Statement"
+      ],
+      "680_plus": [
+        "AOMS Portfolio Select",
+        "AOMS Platinum",
+        "AOMS ICF",
+        "InvestorX"
+      ],
+      "700_plus": [
+        "AOMS Platinum",
+        "AOMS ICF",
+        "AOMS CES/HELOC",
+        "InvestorX"
+      ],
+      "720_plus": [
+        "AOMS ICF (85% LTV)",
+        "AOMS CES",
+        "InvestorX (optimal pricing)"
+      ]
+    },
+    "property_types_supported": {
+      "single_family": ["All Lenders"],
+      "2_4_units": ["All Lenders"],
+      "condos": ["All Lenders"],
+      "condotel": ["AOMS ICF", "HomeXpress Programs", "InvestorX"],
+      "short_term_rental": ["HomeXpress Programs", "InvestorX"],
+      "rural_properties": ["HomeXpress Programs", "InvestorX"]
+    }
+  },
+  "matching_criteria": {
+    "description": "Key criteria for matching buyers to lenders",
+    "primary_factors": [
+      "Credit Score (FICO)",
+      "Down Payment Available (%)",
+      "Property Type",
+      "Loan Amount",
+      "Property Location",
+      "Occupancy Type",
+      "Debt-to-Income Ratio",
+      "Documentation Type Available",
+      "Investment Experience"
+    ],
+    "special_programs": {
+      "dscr_loans": {
+        "description": "For investors who want to qualify based on property cash flow rather than personal income",
+        "lenders": ["AOMS ICF", "HomeXpress InvestorXDSCR", "InvestorX"],
+        "min_dscr": "1.00 typically required"
+      },
+      "bank_statement": {
+        "description": "For self-employed borrowers or those with non-traditional income",
+        "lenders": ["AOMS Bank Statement", "HomeXpress Programs", "LoanStream"],
+        "documentation": "12 or 24 months bank statements"
+      },
+      "foreign_national": {
+        "description": "For non-US citizens investing in US real estate",
+        "lenders": ["AOMS ICF"],
+        "special_requirements": ["12 months reserves", "Assets in US account for 30 days"]
+      },
+      "no_ratio": {
+        "description": "For investors who don't want to provide income documentation",
+        "lenders": ["HomeXpress InvestorXNoRatio"],
+        "requirements": ["Higher down payment (40%)", "Strong credit score (640+)"]
+      }
+    }
+  }
+}
