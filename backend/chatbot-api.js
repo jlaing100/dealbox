@@ -265,6 +265,18 @@ Required fields for lender matching:
 Optional fields:
 - Location (City, State)
 
+HELP FIELD SUBMISSION HANDLING
+
+When users submit information through the landing page "How can I help?" field:
+1. Parameters are automatically extracted and form fields are updated
+2. If "PARAMETERS EXTRACTED FROM INITIAL REQUEST" appears in context, acknowledge that the user provided information through the help field
+3. If "MISSING FIELDS TO COMPLETE ANALYSIS" appears, only ask for those specific missing fields
+4. Acknowledge what was extracted from their initial request before asking for what's missing
+5. Be conversational and confirm that you understood their request
+
+Example response for help field submissions:
+"I see you mentioned wanting help with a $300,000 property and 700 credit score. I've extracted that information. To provide personalized lender recommendations, I just need to know your property type, down payment percentage, and investment experience."
+
 IMPORTANT RULES:
 1. Check user context FIRST - if a field is listed in the context, the user has already provided it
 2. Only ask for fields that are NOT in the user context
@@ -1150,6 +1162,17 @@ function buildContextString(userContext) {
   // Add help field input if available
   if (userContext.helpFieldInput) {
     parts.push(`User's initial request: "${userContext.helpFieldInput}"`);
+  }
+
+  // Add help field parameter extraction context
+  if (userContext.helpFieldExtracted) {
+    parts.push(`PARAMETERS EXTRACTED FROM INITIAL REQUEST: The user provided information through the landing page help field, and parameters were automatically extracted and form fields were updated.`);
+  }
+
+  // Add missing fields context for help field submissions
+  if (userContext.missingFields && userContext.missingFields.length > 0) {
+    const missingLabels = userContext.missingFields.map(([field, label]) => label).join(', ');
+    parts.push(`MISSING FIELDS TO COMPLETE ANALYSIS: ${missingLabels}`);
   }
 
   return parts.join('. ');

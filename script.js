@@ -353,15 +353,117 @@ Could you please provide ${missingFields.length === 1 ? 'that information' : 'th
             this.chatService.sessionState.helpFieldInput = helpText;
             this.chatService.sessionState.helpFieldTimestamp = new Date().toISOString();
 
-            // Always transition to Q&A layout first (Deal Analysis page)
-            this.displayResults([], true);
+            // Extract parameters from the help field text
+            const parameterChanges = this.chatService.detectParameterChanges(helpText);
+            console.log('🔍 Help field parameter extraction:', parameterChanges);
 
-            // Wait a bit for the layout transition to complete before sending message
-            await new Promise(resolve => setTimeout(resolve, 100));
+            // Update form fields with extracted parameters
+            if (parameterChanges.hasChanges) {
+                this.chatService.updateFormFieldsFromChat(parameterChanges);
+                console.log('✅ Updated form fields from help field extraction');
+            }
 
-            // Send the help text to the chatbot for processing
-            // The chatbot will handle parameter extraction, form updates, and lender matching
-            await this.chatService.sendMessage(helpText);
+            // Collect current form data and validate required fields
+            const formData = this.collectFormData();
+            const validation = this.validateRequiredFields(formData);
+
+            console.log('📋 Form data after help field extraction:', formData);
+            console.log('✅ Validation result:', validation);
+
+            if (validation.isValid) {
+                // All required fields present - proceed with lender matching
+                console.log('🎯 All required fields present, proceeding with lender matching');
+
+                // Get property insights from REmine API
+                let propertyInsights = null;
+                try {
+                    if (formData.propertyLocation) {
+                        const locationParts = formData.propertyLocation.split(',').map(p => p.trim());
+                        if (locationParts.length >= 2) {
+                            const city = locationParts[0];
+                            const state = locationParts[1];
+
+                            propertyInsights = await this.fetchPropertyInsights(city, state, formData.propertyValue, formData.propertyType);
+                            console.log('Property insights loaded:', propertyInsights);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Failed to load property insights:', error);
+                }
+
+                // Store property insights for chat context
+                this.propertyInsights = propertyInsights;
+
+                // Find matching lenders
+                const result = await this.findMatchingLenders(formData, propertyInsights);
+                const matches = result.matches || [];
+                const requiresMoreInfo = result.requiresMoreInfo || false;
+
+                // Display lender cards
+                this.displayResults(matches, requiresMoreInfo);
+
+                // Send deal analysis message
+                if (matches && matches.length > 0) {
+                    setTimeout(async () => {
+                        try {
+                            const analysisMessage = this.generateDealAnalysisMessage(formData);
+                            const userContext = {
+                                formData: formData,
+                                lenderMatches: [],
+                                sessionState: this.chatService.sessionState,
+                                timestamp: new Date().toISOString(),
+                                helpFieldExtracted: true
+                            };
+                            await this.chatService.sendMessage(analysisMessage, userContext);
+                        } catch (error) {
+                            console.warn('Failed to send initial deal analysis message:', error);
+                        }
+                    }, 100);
+
+                    // Send lender recommendations
+                    setTimeout(async () => {
+                        try {
+                            const recommendationsMessage = this.generateRecommendationsMessage(matches, formData);
+                            const userContext = {
+                                formData: formData,
+                                lenderMatches: matches,
+                                sessionState: this.chatService.sessionState,
+                                timestamp: new Date().toISOString(),
+                                helpFieldExtracted: true
+                            };
+                            await this.chatService.sendMessage(recommendationsMessage, userContext, propertyInsights);
+                        } catch (error) {
+                            console.warn('Failed to send lender recommendations message:', error);
+                        }
+                    }, 500);
+                }
+
+            } else {
+                // Missing required fields - transition to Q&A and prompt for missing info
+                console.log('❌ Missing required fields:', validation.message);
+                this.displayResults([], true);
+
+                // Wait for layout transition
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                // Send message asking for missing information
+                const missingFields = Object.entries(this.validateRequiredFields(formData).missingFields || {});
+                const missingFieldNames = missingFields.map(([field, label]) => label).join(', ');
+                const missingInfoMessage = `I can see you've provided some information about your property deal. To provide personalized lender recommendations, I still need: ${missingFieldNames}.
+
+Could you please provide ${missingFields.length === 1 ? 'that information' : 'these details'}?`;
+
+                const userContext = {
+                    formData: formData,
+                    lenderMatches: [],
+                    sessionState: this.chatService.sessionState,
+                    timestamp: new Date().toISOString(),
+                    helpFieldExtracted: true,
+                    missingFields: missingFields
+                };
+
+                await this.chatService.sendMessage(missingInfoMessage, userContext);
+            }
 
             // Clear the help field after processing
             helpField.value = '';
@@ -1335,18 +1437,17 @@ class ChatService {
             }
         }
 
-        // Detect credit score changes - including hypothetical changes
-        const creditPatterns = [
-            /credit score.*?(\d{3})/i,
-            /credit.*?(\d{3})/i,
-            /score.*?(\d{3})/i,
-            /(\d{3}).*?credit/i,
-            /actually.*?(\d{3})/i,
-            /my.*?credit.*?(\d{3})/i,
-            /(\d+)\s*points?\s+(?:lower|higher|less|more|better|worse)/i,  // "100 points lower"
-            /if.*?credit.*?(?:was|were|is)\s*(\d{3})/i,  // "if my credit was 660"
-            /what.*?if.*?credit.*?(\d{3})/i  // "what if my credit score is 660"
-        ];
+    // Detect credit score changes - including hypothetical changes
+    const creditPatterns = [
+        /credit score[^0-9]*(\d{3})\b/i,  // "credit score 700" or "credit score: 700"
+        /(\d{3})[^0-9]*credit score/i,    // "700 credit score"
+        /credit[^0-9]*(\d{3})\b/i,        // "credit 700"
+        /score[^0-9]*(\d{3})\b/i,         // "score 700"
+        /(\d{3})\s*points?\s+(?:lower|higher|less|more|better|worse)/i,  // "100 points lower"
+        /if.*?credit.*?(?:was|were|is)[^0-9]*(\d{3})\b/i,  // "if my credit was 660"
+        /what.*?if.*?credit[^0-9]*(\d{3})\b/i,  // "what if my credit score is 660"
+        /my.*?credit.*?(?:is|was|were)[^0-9]*(\d{3})\b/i  // "my credit is 700"
+    ];
 
         for (const pattern of creditPatterns) {
             const match = message.match(pattern);
@@ -1448,6 +1549,7 @@ class ChatService {
         }
 
         // Detect investment experience changes
+        // Check for explicit experience levels first
         const experienceMappings = {
             'first-time': 'first_time',
             'first time': 'first_time',
@@ -1461,6 +1563,48 @@ class ChatService {
                 changes.investmentExperience = value;
                 changes.hasChanges = true;
                 break;
+            }
+        }
+
+        // If no explicit experience found, check for investment intent phrases
+        if (!changes.investmentExperience) {
+            const investmentIntentPatterns = [
+                /looking\s+to\s+invest/i,
+                /want\s+to\s+invest/i,
+                /new\s+investor/i,
+                /investing\s+(?:for\s+the\s+first\s+time|as\s+a\s+beginner)/i,
+                /(?:just\s+)?starting\s+to\s+invest/i,
+                /first\s+investment\s+(?:property|deal)/i,
+                /new\s+to\s+(?:real\s+estate\s+)?investing/i,
+                /(?:am|is|are)\s+(?:new\s+to|starting\s+in)\s+(?:real\s+estate\s+)?investing/i
+            ];
+
+            for (const pattern of investmentIntentPatterns) {
+                if (pattern.test(message)) {
+                    changes.investmentExperience = 'first_time';
+                    changes.hasChanges = true;
+                    console.log('🔍 Detected first-time investor from investment intent phrase');
+                    break;
+                }
+            }
+
+            // If still no experience detected but "investing" is mentioned generally
+            if (!changes.investmentExperience && /investing/i.test(message)) {
+                // Only default to first_time if no contradictory experience is mentioned
+                const experiencedPatterns = [
+                    /(?:experienced|professional|many|several)\s+(?:investor|investments|years)/i,
+                    /(?:have\s+been|been)\s+investing/i,
+                    /experienced\s+in\s+investing/i,
+                    /professional\s+investor/i
+                ];
+
+                const hasExperienceIndicators = experiencedPatterns.some(pattern => pattern.test(message));
+
+                if (!hasExperienceIndicators) {
+                    changes.investmentExperience = 'first_time';
+                    changes.hasChanges = true;
+                    console.log('🔍 Detected first-time investor from general investing mention');
+                }
             }
         }
 
