@@ -1773,7 +1773,7 @@ class LenderService {
             lenderData.loan_programs.forEach(program => {
                 const score = this.scoreProgramMatch(program, buyerProfile, loanAmount);
                 console.log(`  Program ${program.program_type}: confidence ${score.confidence.toFixed(2)}`);
-                if (score.confidence >= 0.5) { // Minimum threshold - should match with base confidence
+                if (score.confidence >= 0.1) { // Lower threshold to show penalized matches
                     matches.push({
                         lenderName: lenderData.company_name,
                         lenderKey: lenderKey,
@@ -1794,7 +1794,7 @@ class LenderService {
             for (const [programKey, programData] of Object.entries(lenderData.programs)) {
                 const score = this.scoreStructuredProgram(programKey, programData, buyerProfile, loanAmount);
                 console.log(`  Structured program ${programKey}: confidence ${score.confidence.toFixed(2)}`);
-                if (score.confidence >= 0.5) {
+                if (score.confidence >= 0.1) { // Lower threshold to show penalized matches
                     matches.push({
                         lenderName: lenderData.company_name,
                         lenderKey: lenderKey,
@@ -1826,8 +1826,8 @@ class LenderService {
         let minCreditScore = null;
         let maxLoanAmount = null;
 
-        // Start with base confidence for having a program
-        confidence = 0.5;
+        // Start with lower base confidence for having a program
+        confidence = 0.25;
         reason = `${program.program_type || program.program_name || 'Program'} available. `;
 
         // Handle different program structures
@@ -1885,7 +1885,7 @@ class LenderService {
             }
         }
 
-        // Credit score matching (40% weight)
+        // Credit score matching (40% weight) - now penalizes low scores
         if (buyerProfile.creditScore && creditReqs) {
             const minScore = this.extractMinCreditScore(creditReqs);
             if (minScore) {
@@ -1894,13 +1894,19 @@ class LenderService {
                     confidence += 0.3;
                     reason += `Credit score meets requirements (${buyerProfile.creditScore} >= ${minScore}). `;
                 } else {
-                    confidence += Math.max(0, 0.2 * (buyerProfile.creditScore / minScore));
-                    reason += `Credit score below preferred range (${buyerProfile.creditScore} < ${minScore}). `;
+                    // Penalize for credit score below minimum instead of giving partial credit
+                    const shortfall = (minScore - buyerProfile.creditScore) / minScore;
+                    confidence -= 0.3 * shortfall;
+                    reason += `Credit score below minimum requirement (${buyerProfile.creditScore} < ${minScore}). `;
                 }
             }
         } else if (buyerProfile.creditScore && buyerProfile.creditScore >= 620) {
             confidence += 0.2; // Decent credit score provided
             reason += `Credit score ${buyerProfile.creditScore} provided. `;
+        } else if (buyerProfile.creditScore && buyerProfile.creditScore < 620) {
+            // Penalize low credit scores even without specific lender minimum
+            confidence -= 0.2;
+            reason += `Credit score ${buyerProfile.creditScore} is below typical lender minimums. `;
         }
 
         // Down payment/LTV matching (35% weight)
@@ -1946,6 +1952,18 @@ class LenderService {
             reason += `Investment property program. `;
         }
 
+        // Investment experience factor - penalize first-time investors
+        if (buyerProfile.investmentExperience && buyerProfile.investmentExperience.toLowerCase().includes('first')) {
+            confidence -= 0.15;
+            reason += `First-time investor may face additional requirements. `;
+        } else if (buyerProfile.investmentExperience && buyerProfile.investmentExperience.toLowerCase().includes('experienced')) {
+            confidence += 0.1;
+            reason += `Experienced investor. `;
+        }
+
+        // Ensure confidence stays within reasonable bounds
+        confidence = Math.max(0.05, Math.min(0.95, confidence));
+
         return { confidence, reason, maxLTV, minCreditScore, maxLoanAmount };
     }
 
@@ -1982,33 +2000,49 @@ class LenderService {
     }
 
     extractMinCreditScore(creditRequirements) {
-        // Parse complex nested credit requirement structures
-        if (!creditRequirements || typeof creditRequirements !== 'object') {
-            return null;
+        if (!creditRequirements) return null;
+
+        if (typeof creditRequirements === 'number') {
+            return creditRequirements;
         }
 
-        // Handle nested structures like investment_properties.all_purposes.min_fico_640
-        let minScore = null;
+        if (typeof creditRequirements === 'string') {
+            const numeric = creditRequirements.match(/\d{3}/);
+            return numeric ? parseInt(numeric[0], 10) : null;
+        }
 
-        function findMinScore(obj, prefix = '') {
-            for (const [key, value] of Object.entries(obj)) {
-                if (key.includes('min_fico') && typeof value === 'object') {
-                    // Extract FICO score from key like "min_fico_640"
-                    const ficoMatch = key.match(/min_fico_(\d+)/);
-                    if (ficoMatch) {
-                        const score = parseInt(ficoMatch[1]);
-                        if (!minScore || score < minScore) {
-                            minScore = score;
-                        }
+        if (Array.isArray(creditRequirements)) {
+            const scores = creditRequirements
+                .map((entry) => this.extractMinCreditScore(entry))
+                .filter((score) => score != null);
+            return scores.length > 0 ? Math.min(...scores) : null;
+        }
+
+        if (typeof creditRequirements === 'object') {
+            // Handle direct min_fico or min_credit_score fields
+            if (creditRequirements.min_fico) return parseInt(creditRequirements.min_fico, 10);
+            if (creditRequirements.min_credit_score) return parseInt(creditRequirements.min_credit_score, 10);
+
+            // Handle nested structures with keys like "min_fico_640"
+            const scores = [];
+            for (const [key, value] of Object.entries(creditRequirements)) {
+                // Check if key contains a FICO score pattern like "min_fico_640"
+                const ficoMatch = key.match(/min_fico_(\d+)/);
+                if (ficoMatch) {
+                    scores.push(parseInt(ficoMatch[1], 10));
+                } else {
+                    // Recursively check nested objects
+                    const nestedScore = this.extractMinCreditScore(value);
+                    if (nestedScore != null) {
+                        scores.push(nestedScore);
                     }
-                } else if (typeof value === 'object' && value !== null) {
-                    findMinScore(value, key + '.');
                 }
             }
+
+            return scores.length > 0 ? Math.min(...scores) : null;
         }
 
-        findMinScore(creditRequirements);
-        return minScore;
+        return null;
     }
 }
 

@@ -79,7 +79,7 @@ class LenderMatcher {
     if (Array.isArray(lenderData.loan_programs)) {
       lenderData.loan_programs.forEach((program) => {
         const score = this.scoreProgramMatch(program, buyerProfile, loanAmount);
-        if (score.confidence >= 0.5) {
+        if (score.confidence >= 0.1) { // Lower threshold to show penalized matches
           matches.push(
             this.buildMatchObject(lenderKey, lenderData, program.program_type || program.program_name, score),
           );
@@ -90,17 +90,30 @@ class LenderMatcher {
     if (lenderData.programs && typeof lenderData.programs === 'object') {
       Object.entries(lenderData.programs).forEach(([programKey, programData]) => {
         const score = this.scoreStructuredProgram(programKey, programData, buyerProfile, loanAmount);
-        if (score.confidence >= 0.5) {
+        if (score.confidence >= 0.1) { // Lower threshold to show penalized matches
           matches.push(this.buildMatchObject(lenderKey, lenderData, programData.program_name || programKey, score));
         }
       });
     }
 
     if (matches.length === 0) {
+      // Start with lower default confidence for lenders that don't match
+      let defaultConfidence = 0.25;
+      let defaultReason = `${lenderData.company_name} offers programs worth reviewing once more details are provided.`;
+
+      // Apply investment experience penalty even to default matches
+      if (buyerProfile.investmentExperience && buyerProfile.investmentExperience.toLowerCase().includes('first')) {
+        defaultConfidence -= 0.15;
+        defaultReason += ` First-time investor may face additional requirements.`;
+      }
+
+      // Ensure minimum confidence
+      defaultConfidence = Math.max(0.05, defaultConfidence);
+
       matches.push(
         this.buildMatchObject(lenderKey, lenderData, lenderData.company_name, {
-          confidence: 0.5,
-          reason: `${lenderData.company_name} offers programs worth reviewing once more details are provided.`,
+          confidence: defaultConfidence,
+          reason: defaultReason,
           maxLTV: null,
           minCreditScore: null,
           maxLoanAmount: null,
@@ -280,12 +293,25 @@ class LenderMatcher {
     }
 
     if (typeof creditRequirements === 'object') {
+      // Handle direct min_fico or min_credit_score fields
       if (creditRequirements.min_fico) return parseInt(creditRequirements.min_fico, 10);
       if (creditRequirements.min_credit_score) return parseInt(creditRequirements.min_credit_score, 10);
 
-      const scores = Object.values(creditRequirements)
-        .map((value) => this.extractMinCreditScore(value))
-        .filter((score) => score != null);
+      // Handle nested structures with keys like "min_fico_640"
+      const scores = [];
+      for (const [key, value] of Object.entries(creditRequirements)) {
+        // Check if key contains a FICO score pattern like "min_fico_640"
+        const ficoMatch = key.match(/min_fico_(\d+)/);
+        if (ficoMatch) {
+          scores.push(parseInt(ficoMatch[1], 10));
+        } else {
+          // Recursively check nested objects
+          const nestedScore = this.extractMinCreditScore(value);
+          if (nestedScore != null) {
+            scores.push(nestedScore);
+          }
+        }
+      }
 
       return scores.length > 0 ? Math.min(...scores) : null;
     }
