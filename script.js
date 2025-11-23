@@ -5,6 +5,16 @@ class LenderMatchingApp {
         this.llmService = new OpenAIMatchingService();
         this.chatService = new ChatService();
         this.currentMatches = null; // Store current lender matches for chat context
+
+        // Field label mappings for user-friendly display
+        this.fieldLabels = {
+            propertyValue: 'Property Value',
+            propertyType: 'Property Type',
+            creditScore: 'Credit Score',
+            downPaymentPercent: 'Down Payment Percentage',
+            investmentExperience: 'Investment Experience'
+        };
+
         this.init();
     }
     
@@ -121,6 +131,18 @@ class LenderMatchingApp {
         }
     }
     
+    formatFieldLabel(fieldKey = '') {
+        if (!fieldKey) return 'Field';
+        if (this.fieldLabels[fieldKey]) return this.fieldLabels[fieldKey];
+        // Convert camelCase or snake_case to title case
+        return fieldKey
+            .replace(/([A-Z])/g, ' $1')
+            .replace(/[_-]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .replace(/\w\S*/g, word => word.charAt(0).toUpperCase() + word.slice(1));
+    }
+
     animateEntrance() {
         // Animate landing page entrance
         setTimeout(() => {
@@ -196,25 +218,6 @@ class LenderMatchingApp {
         submitBtn.textContent = 'Analyzing...';
         this.showLoadingScreen();
 
-        // Transition to Q&A layout immediately
-        this.displayResults([], false);
-
-        // Auto-post initial deal analysis message
-        setTimeout(async () => {
-            try {
-                const analysisMessage = this.generateDealAnalysisMessage(formData);
-                const userContext = {
-                    formData: formData,
-                    lenderMatches: [], // No matches yet, still analyzing
-                    sessionState: this.chatService.sessionState,
-                    timestamp: new Date().toISOString()
-                };
-                await this.chatService.sendMessage(analysisMessage, userContext);
-            } catch (error) {
-                console.warn('Failed to send initial deal analysis message:', error);
-            }
-        }, 100);
-
         try {
             // Get property insights from REmine API
             let propertyInsights = null;
@@ -248,8 +251,45 @@ class LenderMatchingApp {
             // Update results with actual lender matches
             this.displayResults(matches, requiresMoreInfo);
 
-            // Send follow-up message with lender recommendations
-            if (!requiresMoreInfo && matches && matches.length > 0) {
+            if (requiresMoreInfo) {
+                // Send message asking for missing information
+                setTimeout(async () => {
+                    try {
+                        const missingFields = result.missingFields || [];
+                        const missingFieldNames = missingFields.map(field => this.formatFieldLabel(field)).join(', ');
+                        const missingInfoMessage = `I can see you've provided some information about your property deal. To give you the most accurate lender recommendations, I still need: ${missingFieldNames}.
+
+Could you please provide ${missingFields.length === 1 ? 'that information' : 'these details'}?`;
+                        const userContext = {
+                            formData: formData,
+                            lenderMatches: [],
+                            sessionState: this.chatService.sessionState,
+                            timestamp: new Date().toISOString()
+                        };
+                        await this.chatService.sendMessage(missingInfoMessage, userContext);
+                    } catch (error) {
+                        console.warn('Failed to send missing info request to chat:', error);
+                    }
+                }, 100);
+            } else if (matches && matches.length > 0) {
+                // Send follow-up message with lender recommendations
+                // First send initial deal analysis
+                setTimeout(async () => {
+                    try {
+                        const analysisMessage = this.generateDealAnalysisMessage(formData);
+                        const userContext = {
+                            formData: formData,
+                            lenderMatches: [], // No matches yet, still analyzing
+                            sessionState: this.chatService.sessionState,
+                            timestamp: new Date().toISOString()
+                        };
+                        await this.chatService.sendMessage(analysisMessage, userContext);
+                    } catch (error) {
+                        console.warn('Failed to send initial deal analysis message:', error);
+                    }
+                }, 100);
+
+                // Then send lender recommendations
                 setTimeout(async () => {
                     try {
                         const recommendationsMessage = this.generateRecommendationsMessage(matches, formData);
