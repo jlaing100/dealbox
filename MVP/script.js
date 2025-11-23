@@ -60,6 +60,7 @@ class LenderMatchingApp {
         this.currentMatches = null; // Store current lender matches for chat context
         this.propertyInsights = null;
         this.hasEnteredChat = false;
+        this.isSubmittingForm = false;
         this.fieldLabels = {
             propertyValue: 'Property Value',
             propertyType: 'Property Type',
@@ -276,6 +277,13 @@ class LenderMatchingApp {
     }
 
     async handleFormSubmission() {
+        // Prevent multiple simultaneous submissions
+        if (this.isSubmittingForm) {
+            console.log('Form already being submitted, skipping...');
+            return;
+        }
+        this.isSubmittingForm = true;
+
         const form = document.getElementById('investor-form');
         const submitBtn = document.getElementById('find-lenders-btn');
 
@@ -382,6 +390,7 @@ class LenderMatchingApp {
                 </svg>
             `;
             this.hideLoadingScreen();
+            this.isSubmittingForm = false;
         }
     }
 
@@ -482,29 +491,32 @@ class LenderMatchingApp {
         }
     }
 
-    displayResults(matches, requiresMoreInfo = false, missingFields = []) {
+    displayResults(matches, requiresMoreInfo = false, missingFields = [], isChatUpdate = false) {
         // Store matches for chat context
         this.currentMatches = matches;
 
-        // Reset chat state for new search
-        if (!this.hasEnteredChat) {
+        // Reset chat state for new search (only on initial form submission, not chat updates)
+        if (!this.hasEnteredChat && !isChatUpdate) {
             this.resetChatForNewSearch();
             this.hasEnteredChat = true;
         }
 
-        // Transition from landing page to results view
-        const landingPage = document.getElementById('landing-page');
-        const qaLayout = document.getElementById('qa-layout');
+        // Only transition UI on initial form submission, not on chat updates
+        if (!isChatUpdate) {
+            // Transition from landing page to results view
+            const landingPage = document.getElementById('landing-page');
+            const qaLayout = document.getElementById('qa-layout');
 
-        // Scroll to top for better UX
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+            // Scroll to top for better UX
+            window.scrollTo({ top: 0, behavior: 'smooth' });
 
-        // Hide landing page and show results layout immediately
-        landingPage.classList.remove('active');
-        landingPage.style.display = 'none';
+            // Hide landing page and show results layout immediately
+            landingPage.classList.remove('active');
+            landingPage.style.display = 'none';
 
-        qaLayout.style.display = 'grid';
-        qaLayout.classList.add('active');
+            qaLayout.style.display = 'grid';
+            qaLayout.classList.add('active');
+        }
 
         // Update status indicator
         const statusIndicator = document.querySelector('.status-indicator span');
@@ -528,12 +540,14 @@ class LenderMatchingApp {
             } else {
                 this.showLenderCards(matches);
             }
-        }, 500);
+        }, isChatUpdate ? 100 : 500);
 
-        // Add initial chat suggestions after results are shown
-        setTimeout(() => {
-            this.addInitialChatSuggestions(matches, requiresMoreInfo, missingFields);
-        }, 1000);
+        // Add initial chat suggestions only on initial form submission, not on chat updates
+        if (!isChatUpdate) {
+            setTimeout(() => {
+                this.addInitialChatSuggestions(matches, requiresMoreInfo, missingFields);
+            }, 1000);
+        }
     }
 
     addInitialChatSuggestions(matches, requiresMoreInfo = false, missingFields = []) {
@@ -884,6 +898,11 @@ class ChatService {
     async sendMessage(message, userContext = null, propertyInsights = null) {
         if (!message.trim()) return;
 
+        // Prevent multiple simultaneous requests
+        if (this.isTyping) {
+            return;
+        }
+
         try {
             this.ensureChatElements();
             // Add user message to UI
@@ -968,7 +987,7 @@ class ChatService {
 
                         if (requiresMoreInfo) {
                             // Still need more info, show the incomplete info card
-                            window.app.displayResults([], true, result.missingFields || []);
+                            window.app.displayResults([], true, result.missingFields || [], true);
                         } else if (newMatches && newMatches.length > 0) {
                             // Got new matches, update display
                             window.app.currentMatches = newMatches;
