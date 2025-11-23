@@ -636,11 +636,15 @@ Could you please provide ${missingFields.length === 1 ? 'that information' : 'th
         if (missingFields.length > 0) {
             return {
                 isValid: false,
-                message: `Please provide the following required information: ${missingFields.join(', ')}`
+                message: `Please provide the following required information: ${missingFields.join(', ')}`,
+                missingFields: missingFields
             };
         }
 
-        return { isValid: true };
+        return {
+            isValid: true,
+            missingFields: []
+        };
     }
 
     async findMatchingLenders(buyerProfile, propertyInsights = null) {
@@ -1158,6 +1162,35 @@ class ChatService {
                     window.app.showLenderCards(data.lenderMatches);
                 }
             } else {
+                // Additional validation: Check if all required fields are present and force lender card display
+                if (window.app) {
+                    const currentFormData = window.app.collectFormData();
+                    const validation = window.app.validateRequiredFields(currentFormData);
+
+                    if (validation.isValid) {
+                        console.log('✅ All required fields present, checking for lender matches...');
+                        // Get fresh lender matches since API didn't return them
+                        try {
+                            const result = await window.app.findMatchingLenders(currentFormData);
+                            const matches = result.matches || [];
+                            if (matches.length > 0) {
+                                console.log('🔄 Found', matches.length, 'lender matches, displaying cards');
+                                window.app.currentMatches = matches;
+                                window.app.showLenderCards(matches);
+
+                                // Update status indicator
+                                const statusIndicator = document.querySelector('.status-indicator span');
+                                const statusDot = document.querySelector('.status-dot');
+                                if (statusIndicator && statusDot) {
+                                    statusIndicator.textContent = `${matches.length} lenders found`;
+                                    statusDot.style.background = '#10b981';
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Failed to get lender matches:', error);
+                        }
+                    }
+                }
                 // Check if user is asking for lender recommendations and get new matches
                 const lowerMessage = message.toLowerCase();
                 const recommendationKeywords = [
@@ -1228,6 +1261,31 @@ class ChatService {
                             }
                         } else {
                             console.log('❌ No lender matches found, newMatches:', newMatches);
+                        }
+
+                        // Additional check: Even if requiresMoreInfo is true, validate if all required fields are now present
+                        // This handles the case where the API thinks more info is needed but the frontend validation shows all fields are complete
+                        if (requiresMoreInfo && window.app) {
+                            const currentFormData = window.app.collectFormData();
+                            const validation = window.app.validateRequiredFields(currentFormData);
+
+                            if (!validation.isValid) {
+                                console.log('❌ Frontend validation also shows missing fields:', validation.message);
+                            } else {
+                                console.log('✅ Frontend validation shows all required fields are present despite API saying requiresMoreInfo');
+                                // Force lender card display since all required fields are present
+                                console.log('🔄 Forcing lender card display with', newMatches.length, 'lenders');
+                                window.app.showLenderCards(newMatches, parameterChanges.isHypothetical, parameterChanges);
+
+                                // Update status indicator
+                                const statusIndicator = document.querySelector('.status-indicator span');
+                                const statusDot = document.querySelector('.status-dot');
+                                if (statusIndicator && statusDot) {
+                                    statusIndicator.textContent = `${newMatches.length} lenders found`;
+                                    statusDot.style.background = '#10b981';
+                                    console.log('📊 Force-updated status indicator to:', statusIndicator.textContent);
+                                }
+                            }
                         }
                     } catch (error) {
                         console.error('Failed to get new lender recommendations:', error);
