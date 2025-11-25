@@ -86,6 +86,12 @@ body {
     padding: var(--spacing-sm) 0;
 }
 
+.nav-logo {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-lg);
+}
+
 .nav-logo h1 {
     font-size: 1.5rem;
     font-weight: var(--font-weight-bold);
@@ -93,6 +99,7 @@ body {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    margin: 0;
 }
 
 .nav-menu {
@@ -126,7 +133,6 @@ body {
     cursor: pointer;
     transition: all 0.3s ease;
     display: none;
-    margin-left: var(--spacing-lg);
     white-space: nowrap;
 }
 
