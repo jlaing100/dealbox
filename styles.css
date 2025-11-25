@@ -114,6 +114,36 @@ body {
     background: rgba(255, 255, 255, 0.1);
 }
 
+/* New Deal Button */
+.new-deal-btn {
+    padding: var(--spacing-xs) var(--spacing-md);
+    background: linear-gradient(135deg, var(--accent-violet) 0%, var(--accent-blue) 100%);
+    border: none;
+    border-radius: var(--radius-lg);
+    color: white;
+    font-size: 0.9rem;
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: none;
+    margin-left: var(--spacing-lg);
+    white-space: nowrap;
+}
+
+.new-deal-btn.visible {
+    display: inline-flex;
+    align-items: center;
+}
+
+.new-deal-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px var(--glow-violet);
+}
+
+.new-deal-btn:active {
+    transform: translateY(0);
+}
+
 /* Main Container */
 .main-container {
     padding-top: 80px;

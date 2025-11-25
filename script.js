@@ -100,6 +100,14 @@ class LenderMatchingApp {
                 this.callHumanExpert();
             });
         }
+
+        // New Deal button
+        const newDealBtn = document.getElementById('new-deal-btn');
+        if (newDealBtn) {
+            newDealBtn.addEventListener('click', () => {
+                window.location.reload();
+            });
+        }
     }
 
     bindChatEvents() {
@@ -746,6 +754,11 @@ Could you please provide ${missingFields.length === 1 ? 'that information' : 'th
         qaLayout.style.display = 'grid';
         setTimeout(() => {
             qaLayout.classList.add('active');
+            // Show New Deal button when on analysis page
+            const newDealBtn = document.getElementById('new-deal-btn');
+            if (newDealBtn) {
+                newDealBtn.classList.add('visible');
+            }
         }, 50);
 
         // Update status indicator
